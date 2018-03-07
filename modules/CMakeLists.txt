@@ -1,4 +1,8 @@
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
+cmake_minimum_required(VERSION 3.0)
+
+PROJECT(libyasmmodules)
+
+INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})
 
 INCLUDE(arch/CMakeLists.txt)
 INCLUDE(listfmts/CMakeLists.txt)
@@ -14,7 +18,7 @@ MESSAGE(STATUS "Standard modules: ${YASM_MODULES}")
 # This file provides the yasm_init_plugin() function for yasmstd.
 #
 
-SET(INIT_PLUGIN_C ${CMAKE_CURRENT_BINARY_DIR}/init_plugin.c)
+SET(INIT_PLUGIN_C ${PROJECT_BINARY_DIR}/init_plugin.c)
 SET(INIT_PLUGIN_C_REV 1)
 
 # Don't regen if no changes; default to regen
@@ -56,11 +60,17 @@ IF(regen_init_plugin_c)
         FILE(APPEND ${INIT_PLUGIN_C}
              "extern yasm_${_type}_module yasm_${_keyword}_LTX_${_type};\n")
     ENDFOREACH(module)
-    IF(BUILD_SHARED_LIBS)
-        FILE(APPEND ${INIT_PLUGIN_C} "\n#ifdef _MSC_VER\n")
-        FILE(APPEND ${INIT_PLUGIN_C} "__declspec(dllexport)\n")
-        FILE(APPEND ${INIT_PLUGIN_C} "#endif\n")
-    ENDIF(BUILD_SHARED_LIBS)
+	IF(BUILD_STATIC)
+		FILE(APPEND ${INIT_PLUGIN_C} "\n#ifdef _MSC_VER\n")
+		FILE(APPEND ${INIT_PLUGIN_C} "extern\n")
+		FILE(APPEND ${INIT_PLUGIN_C} "#endif\n")
+	ELSE(BUILD_STATIC)
+		IF(BUILD_SHARED_LIBS)
+			FILE(APPEND ${INIT_PLUGIN_C} "\n#ifdef _MSC_VER\n")
+			FILE(APPEND ${INIT_PLUGIN_C} "__declspec(dllexport)\n")
+			FILE(APPEND ${INIT_PLUGIN_C} "#endif\n")
+		ENDIF(BUILD_SHARED_LIBS)
+	ENDIF(BUILD_STATIC)
     FILE(APPEND ${INIT_PLUGIN_C} "void\n")
     FILE(APPEND ${INIT_PLUGIN_C} "yasm_init_plugin(void)\n")
     FILE(APPEND ${INIT_PLUGIN_C} "{\n")
@@ -80,24 +90,60 @@ ENDIF(regen_init_plugin_c)
 
 SET_SOURCE_FILES_PROPERTIES(init_plugin.c GENERATED)
 
-SET(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+IF(BUILD_STATIC)
+	add_library(libyasmmodules STATIC
+		init_plugin.c
+		${YASM_MODULES_SRC}
+		)
+	
+	set (COMPILER_OPTIONS
+		"/W3"
+		"/nologo"
+		"/EHa"
+		"/GF-"
+		"/GR-"
+		"/Oi"
+		"/Ob2"
+	)
 
-IF(BUILD_SHARED_LIBS)
-    ADD_LIBRARY(yasmstd MODULE
-        init_plugin.c
-        ${YASM_MODULES_SRC}
-        )
-    TARGET_LINK_LIBRARIES(yasmstd libyasm)
+	set (COMPILER_OPTIONS_DEBUG
+		"/MTd"
+		"/O2"
+		"/Zi"
+	)
 
-    IF(WIN32)
-        INSTALL(TARGETS yasmstd LIBRARY DESTINATION bin)
-    ELSE(WIN32)
-        INSTALL(TARGETS yasmstd LIBRARY DESTINATION lib)
-    ENDIF(WIN32)
-ELSE(BUILD_SHARED_LIBS)
-    ADD_LIBRARY(yasmstd
-        init_plugin.c
-        ${YASM_MODULES_SRC}
-        )
-    TARGET_LINK_LIBRARIES(yasmstd libyasm)
-ENDIF(BUILD_SHARED_LIBS)
+	set (COMPILER_OPTIONS_RELEASE
+		"/MT"
+	)
+
+	target_compile_options(libyasm PUBLIC
+		"${COMPILER_OPTIONS}"
+		"$<$<CONFIG:DEBUG>:${COMPILER_OPTIONS_DEBUG}>"
+		"$<$<CONFIG:RELEASE>:${COMPILER_OPTIONS_RELEASE}>"
+	)
+	
+	set_target_properties(libyasm PROPERTIES COMPILE_DEFINITIONS_DEBUG "DEBUG;_DEBUG")
+	set_target_properties(libyasm PROPERTIES COMPILE_DEFINITIONS_RELEASE "NDEBUG")	
+		
+	target_link_libraries(libyasmmodules libyasm)
+ELSE(BUILD_STATIC)
+	IF(BUILD_SHARED_LIBS)
+		add_library(libyasmmodules MODULE
+			init_plugin.c
+			${YASM_MODULES_SRC}
+			)
+		target_link_libraries(libyasmmodules libyasm)
+
+		IF(WIN32)
+			INSTALL(TARGETS libyasmmodules LIBRARY DESTINATION bin)
+		ELSE(WIN32)
+			INSTALL(TARGETS libyasmmodules LIBRARY DESTINATION lib)
+		ENDIF(WIN32)
+	ELSE(BUILD_SHARED_LIBS)
+		add_library(libyasmmodules
+			init_plugin.c
+			${YASM_MODULES_SRC}
+			)
+		target_link_libraries(libyasmmodules libyasm)
+	ENDIF(BUILD_SHARED_LIBS)
+ENDIF(BUILD_STATIC)

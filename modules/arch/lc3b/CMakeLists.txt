@@ -1,6 +1,6 @@
 YASM_RE2C(
-    ${CMAKE_CURRENT_SOURCE_DIR}/arch/lc3b/lc3bid.re
-    ${CMAKE_CURRENT_BINARY_DIR}/lc3bid.c
+    ${PROJECT_SOURCE_DIR}/arch/lc3b/lc3bid.re
+    ${PROJECT_BINARY_DIR}/lc3bid.c
     -s
     )
 

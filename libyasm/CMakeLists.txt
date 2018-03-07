@@ -1,80 +1,58 @@
-SET(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+cmake_minimum_required(VERSION 3.0)
 
-ADD_LIBRARY(libyasm
-    assocdat.c
-    bitvect.c
-    bc-align.c
-    bc-data.c
-    bc-incbin.c
-    bc-org.c
-    bc-reserve.c
-    bytecode.c
-    cmake-module.c
-    errwarn.c
-    expr.c
-    file.c
-    floatnum.c
-    hamt.c
-    insn.c
-    intnum.c
-    inttree.c
-    linemap.c
-    md5.c
-    mergesort.c
-    phash.c
-    section.c
-    strcasecmp.c
-    strsep.c
-    symrec.c
-    valparam.c
-    value.c
-    xmalloc.c
-    xstrdup.c
-    )
-IF(BUILD_SHARED_LIBS)
-    SET_TARGET_PROPERTIES(libyasm PROPERTIES
-        OUTPUT_NAME "yasm"
-        COMPILE_FLAGS -DYASM_LIB_SOURCE
-        )
-ELSE(BUILD_SHARED_LIBS)
-    SET_TARGET_PROPERTIES(libyasm PROPERTIES
-        COMPILE_FLAGS -DYASM_LIB_SOURCE
-        )
-ENDIF(BUILD_SHARED_LIBS)
+PROJECT(libyasm)
 
-INSTALL(TARGETS libyasm
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    )
+file(GLOB Sources "*.c")
+file(GLOB Includes "*.h")
 
-INSTALL(FILES
-    arch.h
-    assocdat.h
-    bitvect.h
-    bytecode.h
-    compat-queue.h
-    coretype.h
-    dbgfmt.h
-    errwarn.h
-    expr.h
-    file.h
-    floatnum.h
-    hamt.h
-    insn.h
-    intnum.h
-    inttree.h
-    linemap.h
-    listfmt.h
-    md5.h
-    module.h
-    objfmt.h
-    parser.h
-    phash.h
-    preproc.h
-    section.h
-    symrec.h
-    valparam.h
-    value.h
-    DESTINATION include/libyasm
-    )
+IF(BUILD_STATIC)
+	add_library(libyasm STATIC ${Sources} ${Includes})
+	SET_TARGET_PROPERTIES(libyasm PROPERTIES
+		OUTPUT_NAME "libyasm"
+		COMPILE_FLAGS -DYASM_LIB_SOURCE
+	)
+	
+	set (COMPILER_OPTIONS
+		"/W3"
+		"/nologo"
+		"/EHa"
+		"/GF-"
+		"/GR-"
+		"/Oi"
+		"/Ob2"
+	)
+
+	set (COMPILER_OPTIONS_DEBUG
+		"/MTd"
+		"/O2"
+		"/Zi"
+	)
+
+	set (COMPILER_OPTIONS_RELEASE
+		"/MT"
+	)
+
+	target_compile_options(libyasm PUBLIC
+		"${COMPILER_OPTIONS}"
+		"$<$<CONFIG:DEBUG>:${COMPILER_OPTIONS_DEBUG}>"
+		"$<$<CONFIG:RELEASE>:${COMPILER_OPTIONS_RELEASE}>"
+	)
+	
+	set_target_properties(libyasm PROPERTIES COMPILE_DEFINITIONS_DEBUG "DEBUG;_DEBUG")
+	set_target_properties(libyasm PROPERTIES COMPILE_DEFINITIONS_RELEASE "NDEBUG")
+
+ELSE(BUILD_STATIC)
+	add_library(libyasm ${Sources} ${Includes})
+	IF(BUILD_SHARED_LIBS)
+		SET_TARGET_PROPERTIES(libyasm PROPERTIES
+			OUTPUT_NAME "yasm"
+			COMPILE_FLAGS -DYASM_LIB_SOURCE
+			)
+	ELSE(BUILD_SHARED_LIBS)
+		SET_TARGET_PROPERTIES(libyasm PROPERTIES
+			COMPILE_FLAGS -DYASM_LIB_SOURCE
+			)
+	ENDIF(BUILD_SHARED_LIBS)
+ENDIF(BUILD_STATIC)
+
+target_include_directories(libyasm PUBLIC ${PROJECT_SOURCE_DIR})
