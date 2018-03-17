@@ -34,16 +34,15 @@ IF(BUILD_STATIC)
 		"/GR-"
 		"/Oi"
 		"/Ob2"
+		"/MT"
 	)
 
 	set (COMPILER_OPTIONS_DEBUG
-		"/MTd"
 		"/O2"
 		"/Zi"
 	)
 
 	set (COMPILER_OPTIONS_RELEASE
-		"/MT"
 	)
 
 	target_compile_options(ytasm PUBLIC
